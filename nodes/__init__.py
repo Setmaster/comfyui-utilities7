@@ -1,0 +1,9 @@
+from .image_composite_grid import NODE_CLASS_MAPPINGS as ICG_MAPPINGS
+from .image_composite_grid import NODE_DISPLAY_NAME_MAPPINGS as ICG_DISPLAY
+from .image_composite_grid_labels import NODE_CLASS_MAPPINGS as ICGL_MAPPINGS
+from .image_composite_grid_labels import NODE_DISPLAY_NAME_MAPPINGS as ICGL_DISPLAY
+
+NODE_CLASS_MAPPINGS = {**ICG_MAPPINGS, **ICGL_MAPPINGS}
+NODE_DISPLAY_NAME_MAPPINGS = {**ICG_DISPLAY, **ICGL_DISPLAY}
+
+__all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]
