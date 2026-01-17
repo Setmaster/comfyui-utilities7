@@ -24,6 +24,7 @@ Creates a grid layout of multiple images with optional text labels below each im
 - `columns`: Number of columns in the grid
 - `rows`: Number of rows in the grid
 - `labels`: Multiline text field - one label per line (empty line = no label for that image)
+- `font_size` (8-72, default 20): Font size for text labels
 - `text_color`: Hex color for label text (e.g., #000000)
 - `bg_color`: Hex color for background (e.g., #FFFFFF)
 - `image_1` to `image_N`: Dynamic image inputs based on `image_amount`

@@ -32,7 +32,6 @@ class ImageCompositeGrid:
     MAX_IMAGES = 16
 
     def __init__(self):
-        self.font_size = 20
         self.padding = 10
 
     @classmethod
@@ -66,6 +65,13 @@ class ImageCompositeGrid:
                     "placeholder": "One label per line (empty line = no label)",
                     "tooltip": "Text labels for each image. One per line, matching image order."
                 }),
+                "font_size": ("INT", {
+                    "default": 20,
+                    "min": 8,
+                    "max": 72,
+                    "step": 1,
+                    "tooltip": "Font size for text labels"
+                }),
                 "text_color": ("STRING", {
                     "default": "#000000",
                     "tooltip": "Text color in hex format (e.g. #000000)"
@@ -83,30 +89,30 @@ class ImageCompositeGrid:
     FUNCTION = "generate"
     CATEGORY = "utilities7/image"
 
-    def get_font(self):
+    def get_font(self, font_size):
         """Get a font for text rendering"""
         try:
             if os.name == "nt":
-                return ImageFont.truetype("arial.ttf", self.font_size)
+                return ImageFont.truetype("arial.ttf", font_size)
             elif os.path.exists("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"):
                 return ImageFont.truetype(
                     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-                    self.font_size,
+                    font_size,
                 )
             else:
                 return ImageFont.load_default()
         except Exception:
             return ImageFont.load_default()
 
-    def create_text_panel(self, width, text, bg_color, text_color):
+    def create_text_panel(self, width, text, bg_color, text_color, font_size):
         """Create a text panel with centered text"""
-        font = self.get_font()
-        temp_img = Image.new("RGB", (width, self.font_size * 2), bg_color)
+        font = self.get_font(font_size)
+        temp_img = Image.new("RGB", (width, font_size * 2), bg_color)
         temp_draw = ImageDraw.Draw(temp_img)
         text_bbox = temp_draw.textbbox((0, 0), text, font=font)
         text_width = text_bbox[2] - text_bbox[0]
         text_height = text_bbox[3] - text_bbox[1]
-        final_height = max(int(text_height * 1.5), self.font_size * 2)
+        final_height = max(int(text_height * 1.5), font_size * 2)
         panel = Image.new("RGB", (width, final_height), bg_color)
         draw = ImageDraw.Draw(panel)
         x = (width - text_width) // 2
@@ -120,6 +126,7 @@ class ImageCompositeGrid:
         columns: int,
         rows: int,
         labels: str,
+        font_size: int,
         text_color: str = "#000000",
         bg_color: str = "#FFFFFF",
         **kwargs
@@ -157,12 +164,12 @@ class ImageCompositeGrid:
         max_width = max(img.width for img in pil_images)
         max_height = max(img.height for img in pil_images)
 
-        # Calculate text panel height
+        # Calculate text panel height based on font size
         has_any_label = any(
             i < len(label_list) and label_list[i].strip()
             for i in range(len(pil_images))
         )
-        text_panel_height = (self.font_size * 2 + self.padding) if has_any_label else 0
+        text_panel_height = (font_size * 2 + self.padding) if has_any_label else 0
 
         # Calculate cell dimensions
         cell_width = max_width
@@ -214,7 +221,8 @@ class ImageCompositeGrid:
                     cell_width,
                     label_list[idx].strip(),
                     bg_color,
-                    text_color
+                    text_color,
+                    font_size
                 )
                 text_y = y + max_height
                 result.paste(text_panel, (x, text_y))
