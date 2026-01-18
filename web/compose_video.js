@@ -155,16 +155,24 @@ function addFormatWidgets(nodeType, nodeData) {
 
         // Handle workflow load - restore format widgets with saved values
         chainCallback(node, "onConfigure", function (info) {
-            // Use our custom saved format widget values if available
-            const savedFormatValues = info._formatWidgetValues || {};
+            // Use our custom saved values (includes format widgets + pingpong/save_output)
+            const savedValues = info._formatWidgetValues || {};
 
-            // Find format value from standard widget restoration
-            // (ComfyUI will have already restored the format widget value)
             setTimeout(() => {
-                // Use setTimeout to run after ComfyUI's standard widget restoration
+                // Update format widgets
                 const formatValue = formatWidget.value;
                 if (formatValue && node._updateFormatWidgets) {
-                    node._updateFormatWidgets(formatValue, savedFormatValues);
+                    node._updateFormatWidgets(formatValue, savedValues);
+                }
+
+                // Restore displaced standard widgets (pingpong, save_output)
+                for (const name of ['pingpong', 'save_output']) {
+                    if (name in savedValues) {
+                        const w = node.widgets.find(w => w.name === name);
+                        if (w) {
+                            w.value = savedValues[name];
+                        }
+                    }
                 }
             }, 0);
         });
@@ -172,9 +180,10 @@ function addFormatWidgets(nodeType, nodeData) {
         // Save format widget values separately (don't interfere with standard serialization)
         chainCallback(node, "onSerialize", function (info) {
             if (!node.widgets) return;
-            // Save format-specific widgets to a custom property
+            // Save format-specific widgets and displaced standard widgets to a custom property
             const formatValues = {};
-            for (const name of formatWidgetNames) {
+            const allWidgetsToSave = [...formatWidgetNames, 'pingpong', 'save_output'];
+            for (const name of allWidgetsToSave) {
                 const w = node.widgets.find(w => w.name === name);
                 if (w) {
                     formatValues[name] = w.value;
