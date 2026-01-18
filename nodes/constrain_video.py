@@ -661,8 +661,8 @@ class ConstrainVideo:
                 else:
                     os.unlink(temp_sized)
 
-            # Remove audio if requested and not already done
-            if remove_audio and not has_dimension_constraint and not has_size_constraint:
+            # Remove audio if requested (check if video still has audio)
+            if remove_audio:
                 temp_noaudio = tempfile.NamedTemporaryFile(
                     suffix=".mp4", delete=False
                 ).name
