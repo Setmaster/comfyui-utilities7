@@ -86,8 +86,8 @@ Constrains videos by maximum dimensions and/or file size. Useful for meeting pla
 - `max_width`: Maximum width in pixels (0 = no constraint)
 - `max_height`: Maximum height in pixels (0 = no constraint)
 - `max_size_mb`: Maximum file size in MB (0 = no constraint). Uses two-pass encoding.
-- `trim_start`: Seconds to trim from the start (0 = no trim)
-- `trim_end`: Seconds to trim from the end (0 = no trim)
+- `trim_start`: Start timestamp in seconds (0 = from beginning)
+- `trim_end`: End timestamp in seconds (0 = to the end)
 - `remove_audio`: Remove audio track from output (default: false)
 - `filename_prefix`: Output filename prefix (default: "video/constrained")
 

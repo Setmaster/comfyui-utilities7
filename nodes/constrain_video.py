@@ -265,9 +265,9 @@ def trim_video(
     trim_end: float = 0.0,
 ) -> bool:
     """
-    Trim video by start and/or end time.
-    trim_start: seconds to remove from the beginning
-    trim_end: seconds to remove from the end
+    Trim video to a time range.
+    trim_start: start timestamp in seconds (0 = from beginning)
+    trim_end: end timestamp in seconds (0 = to the end)
     Returns True if trimming was applied, False if no trimming needed.
     """
     if trim_start <= 0 and trim_end <= 0:
@@ -281,7 +281,7 @@ def trim_video(
 
     # Calculate actual start and end points
     start_time = trim_start if trim_start > 0 else 0
-    end_time = duration - trim_end if trim_end > 0 else duration
+    end_time = trim_end if trim_end > 0 else duration
 
     # Validate
     if start_time >= end_time:
@@ -289,6 +289,9 @@ def trim_video(
 
     if start_time >= duration:
         raise Exception(f"trim_start ({trim_start}s) exceeds video duration ({duration}s)")
+
+    if end_time > duration:
+        end_time = duration  # Clamp to video duration
 
     new_duration = end_time - start_time
 
@@ -465,14 +468,14 @@ class ConstrainVideo:
                     "min": 0.0,
                     "max": 3600.0,
                     "step": 0.1,
-                    "tooltip": "Seconds to trim from the start of the video. 0 = no trim."
+                    "tooltip": "Start timestamp in seconds. 0 = start from beginning."
                 }),
                 "trim_end": ("FLOAT", {
                     "default": 0.0,
                     "min": 0.0,
                     "max": 3600.0,
                     "step": 0.1,
-                    "tooltip": "Seconds to trim from the end of the video. 0 = no trim."
+                    "tooltip": "End timestamp in seconds. 0 = go to the end."
                 }),
                 "remove_audio": ("BOOLEAN", {
                     "default": False,
