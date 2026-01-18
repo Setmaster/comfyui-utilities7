@@ -552,20 +552,25 @@ class ComposeVideo:
         counter = max_counter + 1
 
         format_type, format_ext = format.split("/")
-
-        # Save first frame as PNG to keep metadata (only for image formats, not video)
         first_image_file = None
-        if format_type == "image" and extra_options.get('VHS_MetadataImage', True) != False:
+
+        def save_metadata_png():
+            """Save first frame as PNG to preserve workflow metadata."""
+            nonlocal first_image_file
+            if extra_options.get('VHS_MetadataImage', True) == False:
+                return
             first_image_file = f"{filename}_{counter:05}.png"
-            file_path = os.path.join(full_output_folder, first_image_file)
+            png_path = os.path.join(full_output_folder, first_image_file)
             Image.fromarray(tensor_to_bytes(first_image)).save(
-                file_path,
+                png_path,
                 pnginfo=metadata,
                 compress_level=4,
             )
-            output_files.append(file_path)
-        
+            output_files.append(png_path)
+
         if format_type == "image":
+            # Save metadata PNG for image formats
+            save_metadata_png()
             # Use PIL for image formats (gif, webp)
             image_kwargs = {}
             if format_ext == "gif":
@@ -611,6 +616,11 @@ class ComposeVideo:
             has_alpha = first_image.shape[-1] == 4
             kwargs["has_alpha"] = has_alpha
             video_format = apply_format_widgets(format_ext, kwargs)
+
+            # Save metadata PNG for video formats when save_metadata is enabled
+            if video_format.get('save_metadata', 'False') != 'False':
+                save_metadata_png()
+
             dim_alignment = video_format.get("dim_alignment", 2)
             
             # Handle dimension alignment padding
