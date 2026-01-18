@@ -324,6 +324,8 @@ def encode_images_to_video(
     audio: dict = None,
 ) -> str:
     """Encode image tensor batch to a temporary video file."""
+    import threading
+
     if ffmpeg_path is None:
         raise Exception("ffmpeg not found")
 
@@ -348,36 +350,43 @@ def encode_images_to_video(
         "-preset", "medium",
         "-crf", "18",
         "-pix_fmt", "yuv420p",
+        "-an",
+        output_path,
     ]
-
-    if audio is not None:
-        # Write audio to temp file and mux
-        cmd.append("-an")  # First create video without audio
-    else:
-        cmd.append("-an")
-
-    cmd.append(output_path)
 
     proc = subprocess.Popen(
         cmd,
         stdin=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
     )
 
-    pbar = ProgressBar(num_frames)
-    for i in range(num_frames):
-        frame = images[i]
-        if frame.shape[0] != height or frame.shape[1] != width:
-            frame = frame[:height, :width, :]
-        frame_bytes = tensor_to_bytes(frame).tobytes()
-        proc.stdin.write(frame_bytes)
-        pbar.update(1)
+    # Read stderr in a background thread to prevent deadlock
+    stderr_output = []
+    def read_stderr():
+        stderr_output.append(proc.stderr.read())
+    stderr_thread = threading.Thread(target=read_stderr)
+    stderr_thread.start()
 
-    proc.stdin.close()
+    pbar = ProgressBar(num_frames)
+    try:
+        for i in range(num_frames):
+            frame = images[i]
+            if frame.shape[0] != height or frame.shape[1] != width:
+                frame = frame[:height, :width, :]
+            frame_bytes = tensor_to_bytes(frame).tobytes()
+            proc.stdin.write(frame_bytes)
+            pbar.update(1)
+    except BrokenPipeError:
+        pass  # Process died, we'll catch error below
+    finally:
+        proc.stdin.close()
+
     proc.wait()
+    stderr_thread.join()
 
     if proc.returncode != 0:
-        error = proc.stderr.read().decode(*ENCODE_ARGS)
+        error = stderr_output[0].decode(*ENCODE_ARGS) if stderr_output else "Unknown error"
         raise Exception(f"FFmpeg encoding error: {error}")
 
     # Add audio if provided
