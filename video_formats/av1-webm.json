@@ -2,15 +2,15 @@
     "main_pass":
     [
         "-n", "-c:v", "libsvtav1",
-        "-pix_fmt", ["pix_fmt", ["yuv420p10le", "yuv420p"]],
-        "-crf", ["crf","INT", {"default": 23, "min": 0, "max": 100, "step": 1}],
+        "-pix_fmt", ["pix_fmt", ["yuv420p10le", "yuv420p"], {"tooltip": "Pixel format. yuv420p10le supports 10-bit color, yuv420p is 8-bit."}],
+        "-crf", ["crf", "INT", {"default": 23, "min": 0, "max": 100, "step": 1, "tooltip": "Constant Rate Factor. Lower values = higher quality/larger files. 20-30 is typical for AV1."}],
         "-vf", "scale=out_color_matrix=bt709",
         "-color_range", "tv", "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709"
     ],
     "fake_trc": "bt709",
     "audio_pass": ["-c:a", "libopus"],
-    "input_color_depth": ["input_color_depth", ["8bit", "16bit"]],
-    "save_metadata": ["save_metadata", "BOOLEAN", {"default": true}],
+    "input_color_depth": ["input_color_depth", ["8bit", "16bit"], {"tooltip": "Color depth of input frames. Use 16bit for higher quality source material."}],
+    "save_metadata": ["save_metadata", "BOOLEAN", {"default": true, "tooltip": "Embed workflow metadata (prompt, workflow JSON) into the video file."}],
     "extension": "webm",
     "environment": {"SVT_LOG": "1"}
 }

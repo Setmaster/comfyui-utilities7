@@ -3,8 +3,8 @@
     [
         "-n", "-c:v", "libx265",
         "-vtag", "hvc1",
-        "-pix_fmt", ["pix_fmt", ["yuv420p10le", "yuv420p"]],
-        "-crf", ["crf","INT", {"default": 22, "min": 0, "max": 100, "step": 1}],
+        "-pix_fmt", ["pix_fmt", ["yuv420p10le", "yuv420p"], {"tooltip": "Pixel format. yuv420p10le supports 10-bit color, yuv420p is 8-bit."}],
+        "-crf", ["crf", "INT", {"default": 22, "min": 0, "max": 100, "step": 1, "tooltip": "Constant Rate Factor. Lower values = higher quality/larger files. 0 is lossless, 22-28 is typical for H.265."}],
         "-preset", "medium",
         "-x265-params", "log-level=quiet",
         "-vf", "scale=out_color_matrix=bt709",
@@ -12,6 +12,6 @@
     ],
     "fake_trc": "bt709",
     "audio_pass": ["-c:a", "aac"],
-    "save_metadata": ["save_metadata", "BOOLEAN", {"default": true}],
+    "save_metadata": ["save_metadata", "BOOLEAN", {"default": true, "tooltip": "Embed workflow metadata (prompt, workflow JSON) into the video file."}],
     "extension": "mp4"
 }

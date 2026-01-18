@@ -18,5 +18,5 @@
     "fake_trc": "bt709",
     "audio_pass": ["-c:a", "pcm_s16le"],
     "extension": "mov",
-    "extra_widgets": [["profile", ["lt", "standard", "hq", "4444", "4444xq"], {"default": "hq"}]]
+    "extra_widgets": [["profile", ["lt", "standard", "hq", "4444", "4444xq"], {"default": "hq", "tooltip": "ProRes profile. lt=Proxy, standard=LT, hq=422 HQ, 4444=4444, 4444xq=4444 XQ. Higher profiles = better quality but larger files."}]]
 }

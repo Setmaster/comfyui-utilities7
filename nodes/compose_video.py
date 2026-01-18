@@ -221,7 +221,10 @@ def get_video_formats():
     format_widgets = {}
 
     # Audio output widget for formats that support audio
-    audio_output_widget = ['audio_output', ["with audio", "without audio", "both"], {'default': "with audio"}]
+    audio_output_widget = ['audio_output', ["with audio", "without audio", "both"], {
+        'default': "with audio",
+        'tooltip': "Output options when audio is connected: 'with audio' outputs only the video with audio, 'without audio' outputs only the silent video, 'both' outputs both versions."
+    }]
 
     for format_name, path in format_files.items():
         with open(path, 'r') as stream:
@@ -425,7 +428,7 @@ class ComposeVideo:
     @classmethod
     def INPUT_TYPES(s):
         ffmpeg_formats, format_widgets = get_video_formats()
-        format_widgets["image/webp"] = [['lossless', "BOOLEAN", {'default': True}]]
+        format_widgets["image/webp"] = [['lossless', "BOOLEAN", {'default': True, 'tooltip': "Lossless compression. True = perfect quality but larger files, False = lossy compression."}]]
         return {
             "required": {
                 "images": ("IMAGE", {

@@ -2,17 +2,17 @@
     "main_pass": [
         "-n",
         "-c:v", "ffv1",
-        "-level", ["level", ["0", "1", "3"], {"default": "3"}],
-        "-coder", ["coder", ["0", "1", "2"], {"default": "1"}],
-        "-context", ["context", ["0", "1"], {"default": "1"}],
-        "-g", ["gop_size", "INT", {"default": 1, "min": 1, "max": 300, "step": 1}],
-        "-slices", ["slices", ["4", "6", "9", "12", "16", "20", "24", "30"], {"default": "16"}],
-        "-slicecrc", ["slicecrc", ["0", "1"], {"default": "1"}],
-        "-pix_fmt", ["pix_fmt", ["rgba64le", "bgra", "yuv420p", "yuv422p", "yuv444p", "yuva420p", "yuva422p", "yuva444p", "yuv420p10le", "yuv422p10le", "yuv444p10le", "yuv420p12le", "yuv422p12le", "yuv444p12le", "yuv420p14le", "yuv422p14le", "yuv444p14le", "yuv420p16le", "yuv422p16le", "yuv444p16le", "gray", "gray10le", "gray12le", "gray16le"], {"default": "rgba64le"}]
+        "-level", ["level", ["0", "1", "3"], {"default": "3", "tooltip": "FFV1 version. Level 3 is recommended for best compression and features."}],
+        "-coder", ["coder", ["0", "1", "2"], {"default": "1", "tooltip": "Entropy coder. 0=Golomb-Rice, 1=Range coder, 2=Range coder with custom state transition table."}],
+        "-context", ["context", ["0", "1"], {"default": "1", "tooltip": "Context model. 1 enables larger context for better compression."}],
+        "-g", ["gop_size", "INT", {"default": 1, "min": 1, "max": 300, "step": 1, "tooltip": "GOP (Group of Pictures) size. 1 means every frame is a keyframe (best for editing)."}],
+        "-slices", ["slices", ["4", "6", "9", "12", "16", "20", "24", "30"], {"default": "16", "tooltip": "Number of slices per frame. More slices = better multithreading but slightly worse compression."}],
+        "-slicecrc", ["slicecrc", ["0", "1"], {"default": "1", "tooltip": "Add CRC checksum to each slice for error detection."}],
+        "-pix_fmt", ["pix_fmt", ["rgba64le", "bgra", "yuv420p", "yuv422p", "yuv444p", "yuva420p", "yuva422p", "yuva444p", "yuv420p10le", "yuv422p10le", "yuv444p10le", "yuv420p12le", "yuv422p12le", "yuv444p12le", "yuv420p14le", "yuv422p14le", "yuv444p14le", "yuv420p16le", "yuv422p16le", "yuv444p16le", "gray", "gray10le", "gray12le", "gray16le"], {"default": "rgba64le", "tooltip": "Pixel format. rgba64le preserves full quality with alpha. yuv formats are smaller but lossy for RGB sources."}]
     ],
     "audio_pass": ["-c:a", "flac"],
-    "save_metadata": ["save_metadata", "BOOLEAN", {"default": true}],
-    "trim_to_audio": ["trim_to_audio", "BOOLEAN", {"default": false}],
+    "save_metadata": ["save_metadata", "BOOLEAN", {"default": true, "tooltip": "Embed workflow metadata (prompt, workflow JSON) into the video file."}],
+    "trim_to_audio": ["trim_to_audio", "BOOLEAN", {"default": false, "tooltip": "Trim the video to match the audio duration instead of padding audio to match video."}],
     "input_color_depth": "16bit",
     "extension": "mkv"
 }

@@ -74,6 +74,14 @@ function addFormatWidgets(nodeType, nodeData) {
                     app.widgets[type](node, wDef[0], wDef.slice(1), app);
                     const w = node.widgets.pop();
                     w.config = wDef.slice(1);
+
+                    // Apply tooltip if defined
+                    const options = wDef[2] || (Array.isArray(wDef[1]) ? null : null);
+                    const tooltip = wDef[2]?.tooltip;
+                    if (tooltip) {
+                        w.tooltip = tooltip;
+                    }
+
                     newWidgets.push(w);
                 }
             }

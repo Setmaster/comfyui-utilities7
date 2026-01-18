@@ -2,15 +2,15 @@
     "main_pass":
     [
         "-n",
-        "-pix_fmt", ["pix_fmt",["yuv420p","yuva420p"]],
-        "-crf", ["crf","INT", {"default": 20, "min": 0, "max": 100, "step": 1}],
+        "-pix_fmt", ["pix_fmt", ["yuv420p", "yuva420p"], {"tooltip": "Pixel format. yuva420p supports transparency (alpha channel)."}],
+        "-crf", ["crf", "INT", {"default": 20, "min": 0, "max": 100, "step": 1, "tooltip": "Constant Rate Factor. Lower values = higher quality/larger files. 15-25 is typical for VP9."}],
         "-b:v", "0",
         "-vf", "scale=out_color_matrix=bt709",
         "-color_range", "tv", "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709"
     ],
     "fake_trc": "bt709",
     "audio_pass": ["-c:a", "libvorbis"],
-    "save_metadata": ["save_metadata", "BOOLEAN", {"default": true}],
-    "trim_to_audio": ["trim_to_audio", "BOOLEAN", {"default": false}],
+    "save_metadata": ["save_metadata", "BOOLEAN", {"default": true, "tooltip": "Embed workflow metadata (prompt, workflow JSON) into the video file."}],
+    "trim_to_audio": ["trim_to_audio", "BOOLEAN", {"default": false, "tooltip": "Trim the video to match the audio duration instead of padding audio to match video."}],
     "extension": "webm"
 }
