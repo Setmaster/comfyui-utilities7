@@ -36,6 +36,67 @@ function fitHeight(node) {
     node?.graph?.setDirtyCanvas(true);
 }
 
+/**
+ * Add format-specific widgets that appear/disappear based on selected format
+ */
+function addFormatWidgets(nodeType, nodeData) {
+    chainCallback(nodeType.prototype, "onNodeCreated", function () {
+        // Find the format widget
+        let formatWidget = null;
+        let formatWidgetIndex = -1;
+        for (let i = 0; i < this.widgets.length; i++) {
+            if (this.widgets[i].name === "format") {
+                formatWidget = this.widgets[i];
+                formatWidgetIndex = i + 1;
+                break;
+            }
+        }
+
+        if (!formatWidget) return;
+
+        let formatWidgetsCount = 0;
+        const node = this;
+
+        chainCallback(formatWidget, "callback", (value) => {
+            // Get format-specific widgets from node definition
+            const formats = LiteGraph.registered_node_types[node.type]
+                ?.nodeData?.input?.required?.format?.[1]?.formats;
+
+            let newWidgets = [];
+            if (formats?.[value]) {
+                const formatWidgetDefs = formats[value];
+                for (const wDef of formatWidgetDefs) {
+                    let type = wDef[2]?.widgetType ?? wDef[1];
+                    if (Array.isArray(type)) {
+                        type = "COMBO";
+                    }
+                    // Create the widget
+                    app.widgets[type](node, wDef[0], wDef.slice(1), app);
+                    const w = node.widgets.pop();
+                    w.config = wDef.slice(1);
+                    newWidgets.push(w);
+                }
+            }
+
+            // Remove old format widgets and insert new ones
+            const removed = node.widgets.splice(formatWidgetIndex, formatWidgetsCount, ...newWidgets);
+
+            // Clean up removed widgets
+            for (const w of removed) {
+                w?.onRemove?.();
+            }
+
+            fitHeight(node);
+            formatWidgetsCount = newWidgets.length;
+        });
+
+        // Trigger initial format widget setup
+        if (formatWidget.value) {
+            formatWidget.callback?.(formatWidget.value);
+        }
+    });
+}
+
 app.registerExtension({
     name: "utilities7.ComposeVideo",
 
@@ -43,6 +104,9 @@ app.registerExtension({
         if (nodeData?.name !== "ComposeVideo") {
             return;
         }
+
+        // Add format-specific widgets (audio_output, crf, etc.)
+        addFormatWidgets(nodeType, nodeData);
 
         // Add video preview widget
         chainCallback(nodeType.prototype, "onNodeCreated", function () {
