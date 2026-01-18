@@ -350,6 +350,15 @@ app.registerExtension({
 
             // Method to update parameters and refresh preview
             this.updateParameters = (params, forceUpdate = false) => {
+                // Ensure value is an object (ComfyUI may overwrite it during widget restoration)
+                if (typeof previewWidget.value !== 'object' || previewWidget.value === null) {
+                    previewWidget.value = {
+                        hidden: false,
+                        paused: false,
+                        muted: true,
+                        params: {}
+                    };
+                }
                 if (!previewWidget.value.params) {
                     previewWidget.value.params = {};
                 }
