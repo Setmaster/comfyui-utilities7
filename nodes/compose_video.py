@@ -428,7 +428,13 @@ class ComposeVideo:
     @classmethod
     def INPUT_TYPES(s):
         ffmpeg_formats, format_widgets = get_video_formats()
-        format_widgets["image/webp"] = [['lossless', "BOOLEAN", {'default': True, 'tooltip': "Lossless compression. True = perfect quality but larger files, False = lossy compression."}]]
+        # Add widgets for PIL-based image formats
+        save_metadata_widget = ['save_metadata', "BOOLEAN", {'default': True, 'tooltip': "Save a PNG with embedded workflow metadata alongside the output."}]
+        format_widgets["image/gif"] = [save_metadata_widget]
+        format_widgets["image/webp"] = [
+            save_metadata_widget,
+            ['lossless', "BOOLEAN", {'default': True, 'tooltip': "Lossless compression. True = perfect quality but larger files, False = lossy compression."}]
+        ]
         return {
             "required": {
                 "images": ("IMAGE", {
@@ -569,8 +575,9 @@ class ComposeVideo:
             output_files.append(png_path)
 
         if format_type == "image":
-            # Save metadata PNG for image formats
-            save_metadata_png()
+            # Save metadata PNG for image formats if save_metadata is enabled
+            if kwargs.get('save_metadata', True):
+                save_metadata_png()
             # Use PIL for image formats (gif, webp)
             image_kwargs = {}
             if format_ext == "gif":
