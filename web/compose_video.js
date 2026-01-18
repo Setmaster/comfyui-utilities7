@@ -42,21 +42,54 @@ function fitHeight(node) {
  */
 function addFormatWidgets(nodeType, nodeData) {
     chainCallback(nodeType.prototype, "onNodeCreated", function () {
-        // Find the format widget
+        // Find the format widget and format_widget_values widget
         let formatWidget = null;
         let formatWidgetIndex = -1;
+        let formatValuesWidget = null;
+
         for (let i = 0; i < this.widgets.length; i++) {
             if (this.widgets[i].name === "format") {
                 formatWidget = this.widgets[i];
                 formatWidgetIndex = i + 1;
-                break;
+            } else if (this.widgets[i].name === "format_widget_values") {
+                formatValuesWidget = this.widgets[i];
             }
         }
 
         if (!formatWidget) return;
 
+        // Hide the format_widget_values widget (it's just for data transport)
+        if (formatValuesWidget) {
+            formatValuesWidget.type = "hidden";
+            formatValuesWidget.computeSize = () => [0, -4];
+        }
+
         let formatWidgetsCount = 0;
+        let formatWidgetNames = []; // Track names of current format widgets
         const node = this;
+
+        // Function to get current format widget values as JSON
+        const getFormatWidgetValuesJSON = () => {
+            const values = {};
+            for (const name of formatWidgetNames) {
+                const w = node.widgets.find(w => w.name === name);
+                if (w) {
+                    values[name] = w.value;
+                }
+            }
+            return JSON.stringify(values);
+        };
+
+        // Make format_widget_values always return current values when serialized
+        if (formatValuesWidget) {
+            formatValuesWidget.serializeValue = () => getFormatWidgetValuesJSON();
+            // Also override the value getter to always return current values
+            Object.defineProperty(formatValuesWidget, 'value', {
+                get: () => getFormatWidgetValuesJSON(),
+                set: () => {}, // Ignore sets, we always compute the value
+                configurable: true
+            });
+        }
 
         // Function to create format-specific widgets
         const updateFormatWidgets = (value, savedValues = null) => {
@@ -65,6 +98,8 @@ function addFormatWidgets(nodeType, nodeData) {
                 ?.nodeData?.input?.required?.format?.[1]?.formats;
 
             let newWidgets = [];
+            formatWidgetNames = [];
+
             if (formats?.[value]) {
                 const formatWidgetDefs = formats[value];
                 for (const wDef of formatWidgetDefs) {
@@ -89,6 +124,7 @@ function addFormatWidgets(nodeType, nodeData) {
                     }
 
                     newWidgets.push(w);
+                    formatWidgetNames.push(w.name);
                 }
             }
 
@@ -119,37 +155,32 @@ function addFormatWidgets(nodeType, nodeData) {
 
         // Handle workflow load - restore format widgets with saved values
         chainCallback(node, "onConfigure", function (info) {
-            if (!info.widgets_values) return;
+            // Use our custom saved format widget values if available
+            const savedFormatValues = info._formatWidgetValues || {};
 
-            // Convert array format to object if needed
-            let savedValues = info.widgets_values;
-            if (Array.isArray(savedValues)) {
-                // ComfyUI sometimes saves as array, convert to object
-                savedValues = {};
-                const widgetNames = node.widgets.map(w => w.name);
-                info.widgets_values.forEach((val, idx) => {
-                    if (idx < widgetNames.length) {
-                        savedValues[widgetNames[idx]] = val;
-                    }
-                });
-            }
-
-            // Find format value and recreate format widgets with saved values
-            const formatValue = savedValues.format || formatWidget.value;
-            if (formatValue && node._updateFormatWidgets) {
-                node._updateFormatWidgets(formatValue, savedValues);
-            }
+            // Find format value from standard widget restoration
+            // (ComfyUI will have already restored the format widget value)
+            setTimeout(() => {
+                // Use setTimeout to run after ComfyUI's standard widget restoration
+                const formatValue = formatWidget.value;
+                if (formatValue && node._updateFormatWidgets) {
+                    node._updateFormatWidgets(formatValue, savedFormatValues);
+                }
+            }, 0);
         });
 
-        // Save widgets as key-value pairs for reliable restoration
+        // Save format widget values separately (don't interfere with standard serialization)
         chainCallback(node, "onSerialize", function (info) {
             if (!node.widgets) return;
-            info.widgets_values = {};
-            for (const w of node.widgets) {
-                if (w.name && w.type !== "button") {
-                    info.widgets_values[w.name] = w.value;
+            // Save format-specific widgets to a custom property
+            const formatValues = {};
+            for (const name of formatWidgetNames) {
+                const w = node.widgets.find(w => w.name === name);
+                if (w) {
+                    formatValues[name] = w.value;
                 }
             }
+            info._formatWidgetValues = formatValues;
         });
     });
 }

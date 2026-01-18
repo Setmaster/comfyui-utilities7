@@ -475,6 +475,10 @@ class ComposeVideo:
                 "audio": ("AUDIO", {
                     "tooltip": "Optional audio to mix into the video. Ensure frame_rate matches the source for proper sync."
                 }),
+                "format_widget_values": ("STRING", {
+                    "default": "{}",
+                    "tooltip": "JSON-encoded format-specific widget values (set automatically by frontend)"
+                }),
             },
             "hidden": {
                 "prompt": "PROMPT",
@@ -499,10 +503,21 @@ class ComposeVideo:
         prompt=None,
         extra_pnginfo=None,
         audio=None,
+        format_widget_values: str = "{}",
         **kwargs
     ):
+        # Parse format-specific widget values from JSON
+        try:
+            format_options = json.loads(format_widget_values)
+        except (json.JSONDecodeError, TypeError):
+            format_options = {}
+
+        # Merge into kwargs for backward compatibility
+        kwargs.update(format_options)
+
         # Get audio_output from kwargs (dynamic widget) with default
         audio_output = kwargs.pop('audio_output', 'with audio')
+
         if images is None:
             return {"ui": {"gifs": []}, "result": ()}
         

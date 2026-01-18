@@ -55,7 +55,11 @@ Combines an image sequence into a video file with optional audio. Based on Comfy
 - `pingpong`: Play forward then reverse for seamless loop effect
 - `save_output`: Save to output folder (true) or temp folder (false)
 - `audio` (optional): Audio to mix into the video
-- `audio_output` (format-dependent): Controls audio output behavior - "with audio" (default), "without audio", or "both". Only appears for formats that support audio. If no audio is connected, only the video without audio is output regardless of this setting.
+
+**Format-specific options** (appear based on selected format):
+- `audio_output`: Controls audio output - "with audio" (default), "without audio", or "both". Only for formats supporting audio. If no audio connected, outputs video without audio regardless.
+- `save_metadata`: Save a PNG with embedded workflow metadata alongside the output (default: true). Useful for formats that can't reliably embed metadata.
+- `crf`, `pix_fmt`, `trim_to_audio`, etc.: Codec-specific options vary by format.
 
 **Features:**
 - Video preview displayed on node after execution
