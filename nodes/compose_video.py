@@ -493,9 +493,10 @@ class ComposeVideo:
         prompt=None,
         extra_pnginfo=None,
         audio=None,
-        audio_output: str = "with audio",
         **kwargs
     ):
+        # Get audio_output from kwargs (dynamic widget) with default
+        audio_output = kwargs.pop('audio_output', 'with audio')
         if images is None:
             return {"ui": {"gifs": []}, "result": ()}
         
@@ -549,19 +550,20 @@ class ComposeVideo:
                 if file_counter > max_counter:
                     max_counter = file_counter
         counter = max_counter + 1
-        
-        # Save first frame as PNG to keep metadata
-        first_image_file = f"{filename}_{counter:05}.png"
-        file_path = os.path.join(full_output_folder, first_image_file)
-        if extra_options.get('VHS_MetadataImage', True) != False:
+
+        format_type, format_ext = format.split("/")
+
+        # Save first frame as PNG to keep metadata (only for image formats, not video)
+        first_image_file = None
+        if format_type == "image" and extra_options.get('VHS_MetadataImage', True) != False:
+            first_image_file = f"{filename}_{counter:05}.png"
+            file_path = os.path.join(full_output_folder, first_image_file)
             Image.fromarray(tensor_to_bytes(first_image)).save(
                 file_path,
                 pnginfo=metadata,
                 compress_level=4,
             )
-        output_files.append(file_path)
-        
-        format_type, format_ext = format.split("/")
+            output_files.append(file_path)
         
         if format_type == "image":
             # Use PIL for image formats (gif, webp)
