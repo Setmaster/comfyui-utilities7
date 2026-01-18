@@ -446,8 +446,8 @@ class ComposeVideo:
                     "tooltip": "Number of additional times the video should loop. 0 means play once. High values with long sequences may cause performance issues."
                 }),
                 "filename_prefix": ("STRING", {
-                    "default": "video",
-                    "tooltip": "Prefix for output filename. Can include subfolders (e.g., 'videos/output')."
+                    "default": "video/",
+                    "tooltip": "Prefix for output filename. Can include subfolders (e.g., 'video/myprefix')."
                 }),
                 "format": (["image/gif", "image/webp"] + ffmpeg_formats, {
                     'formats': format_widgets,
@@ -483,7 +483,7 @@ class ComposeVideo:
         images,
         frame_rate: float,
         loop_count: int,
-        filename_prefix: str = "video",
+        filename_prefix: str = "video/",
         format: str = "image/gif",
         pingpong: bool = False,
         save_output: bool = True,
