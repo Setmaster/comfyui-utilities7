@@ -475,10 +475,7 @@ class ComposeVideo:
                 "audio": ("AUDIO", {
                     "tooltip": "Optional audio to mix into the video. Ensure frame_rate matches the source for proper sync."
                 }),
-                "format_widget_values": ("STRING", {
-                    "default": "{}",
-                    "tooltip": "JSON-encoded format-specific widget values (set automatically by frontend)"
-                }),
+                "format_widget_values": ("STRING", {"default": "{}"}),
             },
             "hidden": {
                 "prompt": "PROMPT",
