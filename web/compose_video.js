@@ -1,0 +1,311 @@
+/**
+ * Compose Video Node - Video Preview Extension
+ * Adds video preview widget to display output after execution.
+ */
+
+import { app } from "../../scripts/app.js";
+import { api } from "../../scripts/api.js";
+
+/**
+ * Utility to chain callbacks on an object property
+ */
+function chainCallback(object, property, callback) {
+    if (object == undefined) {
+        console.error("Tried to add callback to non-existent object");
+        return;
+    }
+    if (property in object && object[property]) {
+        const originalCallback = object[property];
+        object[property] = function () {
+            const result = originalCallback.apply(this, arguments);
+            return callback.apply(this, arguments) ?? result;
+        };
+    } else {
+        object[property] = callback;
+    }
+}
+
+/**
+ * Resize node to fit content
+ */
+function fitHeight(node) {
+    node.setSize([
+        node.size[0],
+        node.computeSize([node.size[0], node.size[1]])[1]
+    ]);
+    node?.graph?.setDirtyCanvas(true);
+}
+
+app.registerExtension({
+    name: "utilities7.ComposeVideo",
+
+    async beforeRegisterNodeDef(nodeType, nodeData, app) {
+        if (nodeData?.name !== "ComposeVideo") {
+            return;
+        }
+
+        // Add video preview widget
+        chainCallback(nodeType.prototype, "onNodeCreated", function () {
+            const node = this;
+
+            // Create container element
+            const container = document.createElement("div");
+            container.style.width = "100%";
+
+            // Create preview widget
+            const previewWidget = this.addDOMWidget("videopreview", "preview", container, {
+                serialize: false,
+                hideOnZoom: false,
+                getValue() {
+                    return container.value;
+                },
+                setValue(v) {
+                    container.value = v;
+                },
+            });
+
+            // Initialize widget state
+            previewWidget.value = {
+                hidden: false,
+                paused: false,
+                muted: true,
+                params: {}
+            };
+
+            // Compute size based on aspect ratio
+            previewWidget.computeSize = function (width) {
+                if (this.aspectRatio && !this.parentEl.hidden) {
+                    let height = (node.size[0] - 20) / this.aspectRatio + 10;
+                    if (!(height > 0)) {
+                        height = 0;
+                    }
+                    this.computedHeight = height + 10;
+                    return [width, height];
+                }
+                return [width, -4]; // No source loaded, hide widget
+            };
+
+            // Create parent element for video/image
+            previewWidget.parentEl = document.createElement("div");
+            previewWidget.parentEl.className = "compose_video_preview";
+            previewWidget.parentEl.style.width = "100%";
+            container.appendChild(previewWidget.parentEl);
+
+            // Create video element
+            previewWidget.videoEl = document.createElement("video");
+            previewWidget.videoEl.controls = false;
+            previewWidget.videoEl.loop = true;
+            previewWidget.videoEl.muted = true;
+            previewWidget.videoEl.style.width = "100%";
+
+            // Handle video metadata loaded
+            previewWidget.videoEl.addEventListener("loadedmetadata", () => {
+                previewWidget.aspectRatio = previewWidget.videoEl.videoWidth / previewWidget.videoEl.videoHeight;
+                fitHeight(node);
+            });
+
+            // Handle video load error
+            previewWidget.videoEl.addEventListener("error", () => {
+                previewWidget.parentEl.hidden = true;
+                fitHeight(node);
+            });
+
+            // Unmute on hover, mute on leave
+            previewWidget.videoEl.onmouseenter = () => {
+                previewWidget.videoEl.muted = previewWidget.value.muted;
+            };
+            previewWidget.videoEl.onmouseleave = () => {
+                previewWidget.videoEl.muted = true;
+            };
+
+            // Create image element (for gif/webp)
+            previewWidget.imgEl = document.createElement("img");
+            previewWidget.imgEl.style.width = "100%";
+            previewWidget.imgEl.hidden = true;
+            previewWidget.imgEl.onload = () => {
+                previewWidget.aspectRatio = previewWidget.imgEl.naturalWidth / previewWidget.imgEl.naturalHeight;
+                fitHeight(node);
+            };
+
+            previewWidget.parentEl.appendChild(previewWidget.videoEl);
+            previewWidget.parentEl.appendChild(previewWidget.imgEl);
+
+            // Forward all mouse events to canvas for proper interaction
+            // This prevents the preview from blocking zoom, pan, and click events
+            container.addEventListener("contextmenu", (e) => {
+                e.preventDefault();
+                return app.canvas._mousedown_callback(e);
+            }, true);
+            container.addEventListener("pointerdown", (e) => {
+                e.preventDefault();
+                return app.canvas._mousedown_callback(e);
+            }, true);
+            container.addEventListener("mousewheel", (e) => {
+                e.preventDefault();
+                return app.canvas._mousewheel_callback(e);
+            }, true);
+            container.addEventListener("pointermove", (e) => {
+                e.preventDefault();
+                return app.canvas._mousemove_callback(e);
+            }, true);
+            container.addEventListener("pointerup", (e) => {
+                e.preventDefault();
+                return app.canvas._mouseup_callback(e);
+            }, true);
+
+            // Update preview source
+            previewWidget.updateSource = function () {
+                if (!this.value.params || !this.value.params.filename) {
+                    return;
+                }
+
+                const params = { ...this.value.params };
+                this.parentEl.hidden = this.value.hidden;
+
+                const formatType = params.format?.split("/")[0];
+                const formatExt = params.format?.split("/")[1];
+
+                // Build URL for ComfyUI's /view endpoint
+                const viewParams = new URLSearchParams({
+                    filename: params.filename,
+                    subfolder: params.subfolder || "",
+                    type: params.type || "output"
+                });
+                const url = api.apiURL("/view?" + viewParams.toString());
+
+                if (formatType === "video" || formatExt === "gif") {
+                    // Use video element for video formats and gifs
+                    this.videoEl.autoplay = !this.value.paused && !this.value.hidden;
+                    this.videoEl.src = url;
+                    this.videoEl.hidden = false;
+                    this.imgEl.hidden = true;
+                } else if (formatType === "image") {
+                    // Use img element for static images (webp)
+                    this.imgEl.src = url;
+                    this.videoEl.hidden = true;
+                    this.imgEl.hidden = false;
+                }
+            };
+
+            // Method to update parameters and refresh preview
+            this.updateParameters = (params, forceUpdate = false) => {
+                if (!previewWidget.value.params) {
+                    previewWidget.value.params = {};
+                }
+                Object.assign(previewWidget.value.params, params);
+                if (forceUpdate) {
+                    previewWidget.updateSource();
+                }
+            };
+        });
+
+        // Hook into onExecuted to update preview when node finishes
+        chainCallback(nodeType.prototype, "onExecuted", function (message) {
+            if (message?.gifs && message.gifs.length > 0) {
+                this.updateParameters(message.gifs[0], true);
+            }
+        });
+
+        // Add right-click context menu options
+        chainCallback(nodeType.prototype, "getExtraMenuOptions", function (_, options) {
+            const previewWidget = this.widgets.find((w) => w.name === "videopreview");
+            if (!previewWidget) return;
+
+            const newOptions = [];
+
+            // Get current preview URL
+            let url = null;
+            if (previewWidget.videoEl && !previewWidget.videoEl.hidden && previewWidget.videoEl.src) {
+                url = previewWidget.videoEl.src;
+            } else if (previewWidget.imgEl && !previewWidget.imgEl.hidden && previewWidget.imgEl.src) {
+                url = previewWidget.imgEl.src;
+            }
+
+            if (url) {
+                // Open in new tab
+                newOptions.push({
+                    content: "Open preview",
+                    callback: () => {
+                        window.open(url, "_blank");
+                    },
+                });
+
+                // Download preview
+                newOptions.push({
+                    content: "Save preview",
+                    callback: () => {
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.setAttribute("download", previewWidget.value.params?.filename || "video");
+                        document.body.append(a);
+                        a.click();
+                        requestAnimationFrame(() => a.remove());
+                    },
+                });
+
+                // Copy file path
+                if (previewWidget.value.params?.fullpath) {
+                    newOptions.push({
+                        content: "Copy output filepath",
+                        callback: async () => {
+                            try {
+                                await navigator.clipboard.writeText(previewWidget.value.params.fullpath);
+                            } catch (e) {
+                                console.error("Failed to copy path:", e);
+                            }
+                        },
+                    });
+                }
+            }
+
+            // Pause/Resume (only for video element)
+            if (previewWidget.videoEl && !previewWidget.videoEl.hidden) {
+                const pauseLabel = previewWidget.value.paused ? "Resume preview" : "Pause preview";
+                newOptions.push({
+                    content: pauseLabel,
+                    callback: () => {
+                        if (previewWidget.value.paused) {
+                            previewWidget.videoEl.play();
+                        } else {
+                            previewWidget.videoEl.pause();
+                        }
+                        previewWidget.value.paused = !previewWidget.value.paused;
+                    },
+                });
+            }
+
+            // Hide/Show preview
+            const visLabel = previewWidget.value.hidden ? "Show preview" : "Hide preview";
+            newOptions.push({
+                content: visLabel,
+                callback: () => {
+                    if (!previewWidget.videoEl.hidden && !previewWidget.value.hidden) {
+                        previewWidget.videoEl.pause();
+                    } else if (previewWidget.value.hidden && !previewWidget.videoEl.hidden && !previewWidget.value.paused) {
+                        previewWidget.videoEl.play();
+                    }
+                    previewWidget.value.hidden = !previewWidget.value.hidden;
+                    previewWidget.parentEl.hidden = previewWidget.value.hidden;
+                    fitHeight(this);
+                },
+            });
+
+            // Mute/Unmute
+            const muteLabel = previewWidget.value.muted ? "Unmute preview" : "Mute preview";
+            newOptions.push({
+                content: muteLabel,
+                callback: () => {
+                    previewWidget.value.muted = !previewWidget.value.muted;
+                },
+            });
+
+            // Add separator if there are existing options
+            if (options.length > 0 && options[0] != null && newOptions.length > 0) {
+                newOptions.push(null);
+            }
+
+            // Prepend our options
+            options.unshift(...newOptions);
+        });
+    },
+});

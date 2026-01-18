@@ -42,10 +42,35 @@ Helper node that combines 16 individual text fields into a multiline string. Use
 **Output:**
 - `labels`: Multiline string ready to connect to Image Composite Grid's labels input
 
-## Category
+### Compose Video
 
-All nodes appear under **utilities7/image** in the node menu.
+Combines an image sequence into a video file with optional audio. Based on ComfyUI-VideoHelperSuite's Video Combine node.
+
+**Inputs:**
+- `images`: Image sequence to combine into video
+- `frame_rate`: Frames per second (1-120, default 8)
+- `loop_count`: Number of additional loops (0 = play once)
+- `filename_prefix`: Output filename prefix (supports subfolders)
+- `format`: Output format (image/gif, image/webp, video/h264-mp4, video/h265-mp4, video/webm, etc.)
+- `pingpong`: Play forward then reverse for seamless loop effect
+- `save_output`: Save to output folder (true) or temp folder (false)
+- `audio` (optional): Audio to mix into the video
+
+**Features:**
+- Video preview displayed on node after execution
+- Right-click context menu: Open, Save, Copy path, Pause/Resume, Hide/Show, Mute/Unmute
+- Audio unmutes on hover
+- Supports multiple video formats via ffmpeg
+
+**Requirements:**
+- ffmpeg (via imageio-ffmpeg, system PATH, or local binary)
+- gifski (optional, for high-quality GIF output)
+
+## Categories
+
+- **utilities7/image**: Image Composite Grid, Image Composite Grid Labels
+- **utilities7/video**: Compose Video
 
 ## License
 
-MIT
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
