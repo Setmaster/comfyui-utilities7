@@ -50,11 +50,12 @@ Combines an image sequence into a video file with optional audio. Based on Comfy
 - `images`: Image sequence to combine into video
 - `frame_rate`: Frames per second (1-120, default 8)
 - `loop_count`: Number of additional loops (0 = play once)
-- `filename_prefix`: Output filename prefix (supports subfolders)
+- `filename_prefix`: Output filename prefix (default: "video", supports subfolders)
 - `format`: Output format (image/gif, image/webp, video/h264-mp4, video/h265-mp4, video/webm, etc.)
 - `pingpong`: Play forward then reverse for seamless loop effect
 - `save_output`: Save to output folder (true) or temp folder (false)
 - `audio` (optional): Audio to mix into the video
+- `audio_output` (format-dependent): Controls audio output behavior - "with audio" (default), "without audio", or "both". Only appears for formats that support audio. If no audio is connected, only the video without audio is output regardless of this setting.
 
 **Features:**
 - Video preview displayed on node after execution

@@ -205,20 +205,24 @@ def iterate_format(video_format, for_widgets=True):
 def get_video_formats():
     """Get available video formats from JSON files."""
     format_files = {}
-    
+
     # Check custom formats folder
     for format_name in folder_paths.get_filename_list("utilities7_video_formats"):
         format_files[format_name] = folder_paths.get_full_path("utilities7_video_formats", format_name)
-    
+
     # Check built-in formats
     if os.path.isdir(base_formats_dir):
         for item in os.scandir(base_formats_dir):
             if not item.is_file() or not item.name.endswith('.json'):
                 continue
             format_files[item.name[:-5]] = item.path
-    
+
     formats = []
     format_widgets = {}
+
+    # Audio output widget for formats that support audio
+    audio_output_widget = ['audio_output', ["with audio", "without audio", "both"], {'default': "with audio"}]
+
     for format_name, path in format_files.items():
         with open(path, 'r') as stream:
             video_format = json.load(stream)
@@ -226,6 +230,11 @@ def get_video_formats():
             continue
         widgets = list(iterate_format(video_format))
         formats.append("video/" + format_name)
+
+        # Add audio_output widget for formats that support audio (not gifski)
+        if "gifski_pass" not in video_format:
+            widgets = [audio_output_widget] + widgets
+
         if len(widgets) > 0:
             format_widgets["video/" + format_name] = widgets
     return formats, format_widgets
@@ -437,7 +446,7 @@ class ComposeVideo:
                     "tooltip": "Number of additional times the video should loop. 0 means play once. High values with long sequences may cause performance issues."
                 }),
                 "filename_prefix": ("STRING", {
-                    "default": "compose_video",
+                    "default": "video",
                     "tooltip": "Prefix for output filename. Can include subfolders (e.g., 'videos/output')."
                 }),
                 "format": (["image/gif", "image/webp"] + ffmpeg_formats, {
@@ -474,13 +483,14 @@ class ComposeVideo:
         images,
         frame_rate: float,
         loop_count: int,
-        filename_prefix: str = "compose_video",
+        filename_prefix: str = "video",
         format: str = "image/gif",
         pingpong: bool = False,
         save_output: bool = True,
         prompt=None,
         extra_pnginfo=None,
         audio=None,
+        audio_output: str = "with audio",
         **kwargs
     ):
         if images is None:
@@ -694,49 +704,64 @@ class ComposeVideo:
                 pass
             
             output_files.append(file_path)
-            
-            # Handle audio if provided
+
+            # Handle audio based on audio_output setting
+            # If no audio connected, always just output video without audio
             a_waveform = None
             if audio is not None:
                 try:
                     a_waveform = audio['waveform']
                 except:
                     pass
-            
-            if a_waveform is not None:
+
+            # Only process audio if we have audio data AND user wants audio output
+            should_create_audio_version = (
+                a_waveform is not None and
+                audio_output in ["with audio", "both"]
+            )
+
+            if should_create_audio_version:
                 output_file_with_audio = f"{filename}_{counter:05}-audio.{video_format['extension']}"
                 output_file_with_audio_path = os.path.join(full_output_folder, output_file_with_audio)
-                
+
                 if "audio_pass" not in video_format:
                     video_format["audio_pass"] = ["-c:a", "libopus"]
-                
+
                 channels = audio['waveform'].size(1)
                 min_audio_dur = total_frames_output / frame_rate + 1
-                
+
                 if video_format.get('trim_to_audio', 'False') != 'False':
                     apad = []
                 else:
                     apad = ["-af", "apad=whole_dur=" + str(min_audio_dur)]
-                
+
                 mux_args = [ffmpeg_path, "-v", "error", "-n", "-i", file_path,
                             "-ar", str(audio['sample_rate']), "-ac", str(channels),
                             "-f", "f32le", "-i", "-", "-c:v", "copy"] \
                             + video_format["audio_pass"] \
                             + apad + ["-shortest", output_file_with_audio_path]
-                
+
                 audio_data = audio['waveform'].squeeze(0).transpose(0, 1).numpy().tobytes()
                 merge_filter_args(mux_args, '-af')
-                
+
                 try:
                     res = subprocess.run(mux_args, input=audio_data,
                                          env=env, capture_output=True, check=True)
                 except subprocess.CalledProcessError as e:
                     raise Exception("An error occurred in the ffmpeg subprocess:\n" + e.stderr.decode(*ENCODE_ARGS))
-                
+
                 if res.stderr:
                     print(res.stderr.decode(*ENCODE_ARGS), end="", file=sys.stderr)
-                
+
                 output_files.append(output_file_with_audio_path)
+
+                # If user only wants "with audio", delete the non-audio version
+                if audio_output == "with audio":
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                    output_files.remove(file_path)
+
+                # Preview the audio version
                 file = output_file_with_audio
         
         # Clean up intermediate files if requested
