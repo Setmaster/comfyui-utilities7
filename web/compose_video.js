@@ -38,6 +38,7 @@ function fitHeight(node) {
 
 /**
  * Add format-specific widgets that appear/disappear based on selected format
+ * Also handles proper serialization/deserialization for workflow save/load
  */
 function addFormatWidgets(nodeType, nodeData) {
     chainCallback(nodeType.prototype, "onNodeCreated", function () {
@@ -57,7 +58,8 @@ function addFormatWidgets(nodeType, nodeData) {
         let formatWidgetsCount = 0;
         const node = this;
 
-        chainCallback(formatWidget, "callback", (value) => {
+        // Function to create format-specific widgets
+        const updateFormatWidgets = (value, savedValues = null) => {
             // Get format-specific widgets from node definition
             const formats = LiteGraph.registered_node_types[node.type]
                 ?.nodeData?.input?.required?.format?.[1]?.formats;
@@ -76,10 +78,14 @@ function addFormatWidgets(nodeType, nodeData) {
                     w.config = wDef.slice(1);
 
                     // Apply tooltip if defined
-                    const options = wDef[2] || (Array.isArray(wDef[1]) ? null : null);
                     const tooltip = wDef[2]?.tooltip;
                     if (tooltip) {
                         w.tooltip = tooltip;
+                    }
+
+                    // Restore saved value if available
+                    if (savedValues && w.name in savedValues) {
+                        w.value = savedValues[w.name];
                     }
 
                     newWidgets.push(w);
@@ -96,12 +102,55 @@ function addFormatWidgets(nodeType, nodeData) {
 
             fitHeight(node);
             formatWidgetsCount = newWidgets.length;
+        };
+
+        // Hook into format widget callback
+        chainCallback(formatWidget, "callback", (value) => {
+            updateFormatWidgets(value);
         });
+
+        // Store reference to update function for use in onConfigure
+        node._updateFormatWidgets = updateFormatWidgets;
 
         // Trigger initial format widget setup
         if (formatWidget.value) {
-            formatWidget.callback?.(formatWidget.value);
+            updateFormatWidgets(formatWidget.value);
         }
+
+        // Handle workflow load - restore format widgets with saved values
+        chainCallback(node, "onConfigure", function (info) {
+            if (!info.widgets_values) return;
+
+            // Convert array format to object if needed
+            let savedValues = info.widgets_values;
+            if (Array.isArray(savedValues)) {
+                // ComfyUI sometimes saves as array, convert to object
+                savedValues = {};
+                const widgetNames = node.widgets.map(w => w.name);
+                info.widgets_values.forEach((val, idx) => {
+                    if (idx < widgetNames.length) {
+                        savedValues[widgetNames[idx]] = val;
+                    }
+                });
+            }
+
+            // Find format value and recreate format widgets with saved values
+            const formatValue = savedValues.format || formatWidget.value;
+            if (formatValue && node._updateFormatWidgets) {
+                node._updateFormatWidgets(formatValue, savedValues);
+            }
+        });
+
+        // Save widgets as key-value pairs for reliable restoration
+        chainCallback(node, "onSerialize", function (info) {
+            if (!node.widgets) return;
+            info.widgets_values = {};
+            for (const w of node.widgets) {
+                if (w.name && w.type !== "button") {
+                    info.widgets_values[w.name] = w.value;
+                }
+            }
+        });
     });
 }
 
