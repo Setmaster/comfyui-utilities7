@@ -258,6 +258,62 @@ def remove_audio_from_video(input_path: str, output_path: str) -> bool:
         raise Exception(f"FFmpeg error removing audio: {e.stderr.decode(*ENCODE_ARGS)}")
 
 
+def trim_video(
+    input_path: str,
+    output_path: str,
+    trim_start: float = 0.0,
+    trim_end: float = 0.0,
+) -> bool:
+    """
+    Trim video by start and/or end time.
+    trim_start: seconds to remove from the beginning
+    trim_end: seconds to remove from the end
+    Returns True if trimming was applied, False if no trimming needed.
+    """
+    if trim_start <= 0 and trim_end <= 0:
+        return False
+
+    info = get_video_info(input_path)
+    if not info:
+        return False
+
+    duration = info["duration"]
+
+    # Calculate actual start and end points
+    start_time = trim_start if trim_start > 0 else 0
+    end_time = duration - trim_end if trim_end > 0 else duration
+
+    # Validate
+    if start_time >= end_time:
+        raise Exception(f"Invalid trim: start ({start_time}s) >= end ({end_time}s). Video duration: {duration}s")
+
+    if start_time >= duration:
+        raise Exception(f"trim_start ({trim_start}s) exceeds video duration ({duration}s)")
+
+    new_duration = end_time - start_time
+
+    cmd = [
+        ffmpeg_path, "-y",
+        "-ss", str(start_time),
+        "-i", input_path,
+        "-t", str(new_duration),
+        "-c:v", "libx264", "-preset", "medium", "-crf", "18",
+    ]
+
+    if info["has_audio"]:
+        cmd.extend(["-c:a", "aac", "-b:a", "192k"])
+    else:
+        cmd.append("-an")
+
+    cmd.append(output_path)
+
+    try:
+        subprocess.run(cmd, check=True, capture_output=True)
+        return True
+    except subprocess.CalledProcessError as e:
+        raise Exception(f"FFmpeg error during trimming: {e.stderr.decode(*ENCODE_ARGS)}")
+
+
 def encode_images_to_video(
     images: torch.Tensor,
     output_path: str,
@@ -404,6 +460,20 @@ class ConstrainVideo:
                     "step": 0.1,
                     "tooltip": "Maximum file size in MB. 0 = no constraint. Uses two-pass encoding."
                 }),
+                "trim_start": ("FLOAT", {
+                    "default": 0.0,
+                    "min": 0.0,
+                    "max": 3600.0,
+                    "step": 0.1,
+                    "tooltip": "Seconds to trim from the start of the video. 0 = no trim."
+                }),
+                "trim_end": ("FLOAT", {
+                    "default": 0.0,
+                    "min": 0.0,
+                    "max": 3600.0,
+                    "step": 0.1,
+                    "tooltip": "Seconds to trim from the end of the video. 0 = no trim."
+                }),
                 "remove_audio": ("BOOLEAN", {
                     "default": False,
                     "tooltip": "Remove audio track from the output video."
@@ -432,6 +502,8 @@ class ConstrainVideo:
         max_width: int = 0,
         max_height: int = 0,
         max_size_mb: float = 0.0,
+        trim_start: float = 0.0,
+        trim_end: float = 0.0,
         remove_audio: bool = False,
         filename_prefix: str = "video/constrained",
     ):
@@ -490,8 +562,9 @@ class ConstrainVideo:
         # Check if any constraints are set
         has_dimension_constraint = max_width > 0 or max_height > 0
         has_size_constraint = max_size_mb > 0
+        has_trim = trim_start > 0 or trim_end > 0
 
-        if not has_dimension_constraint and not has_size_constraint and not remove_audio:
+        if not has_dimension_constraint and not has_size_constraint and not has_trim and not remove_audio:
             # No constraints - just return original path
             if temp_source:
                 # Move temp file to output
@@ -529,7 +602,20 @@ class ConstrainVideo:
         needs_cleanup = []
 
         try:
-            # Apply dimension constraints first (simpler, may reduce file size)
+            # Apply trimming first (reduces data for subsequent operations)
+            if has_trim:
+                temp_trimmed = tempfile.NamedTemporaryFile(
+                    suffix=".mp4", delete=False
+                ).name
+
+                if trim_video(current_path, temp_trimmed, trim_start, trim_end):
+                    if current_path != source_path or temp_source:
+                        needs_cleanup.append(current_path)
+                    current_path = temp_trimmed
+                else:
+                    os.unlink(temp_trimmed)
+
+            # Apply dimension constraints (simpler, may reduce file size)
             if has_dimension_constraint:
                 temp_scaled = tempfile.NamedTemporaryFile(
                     suffix=".mp4", delete=False
