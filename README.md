@@ -71,10 +71,37 @@ Combines an image sequence into a video file with optional audio. Based on Comfy
 - ffmpeg (via imageio-ffmpeg, system PATH, or local binary)
 - gifski (optional, for high-quality GIF output)
 
+### Constrain Video
+
+Constrains videos by maximum dimensions and/or file size. Useful for meeting platform upload limits (Discord, Twitter, etc.).
+
+**Inputs (all optional - provide one source):**
+- `video`: Native ComfyUI VIDEO input (from Load Video node)
+- `video_path`: Path to video file (from Compose Video output or manual input)
+- `images`: Image sequence (from VHS Load Video or other loaders)
+- `frame_rate`: Frame rate for image sequence input (default: 30)
+- `audio`: Audio for image sequence input
+
+**Constraint options:**
+- `max_width`: Maximum width in pixels (0 = no constraint)
+- `max_height`: Maximum height in pixels (0 = no constraint)
+- `max_size_mb`: Maximum file size in MB (0 = no constraint). Uses two-pass encoding.
+- `remove_audio`: Remove audio track from output (default: false)
+- `filename_prefix`: Output filename prefix (default: "video/constrained")
+
+**Output:**
+- `video_path`: Path to the constrained video file
+
+**Features:**
+- Accepts multiple input types for flexibility
+- Dimension constraint preserves aspect ratio
+- Two-pass encoding for accurate file size targeting
+- Can be chained after Compose Video via the video_path output
+
 ## Categories
 
 - **utilities7/image**: Image Composite Grid, Image Composite Grid Labels
-- **utilities7/video**: Compose Video
+- **utilities7/video**: Compose Video, Constrain Video
 
 ## License
 

@@ -483,7 +483,9 @@ class ComposeVideo:
             },
         }
 
-    RETURN_TYPES = ()
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("video_path",)
+    OUTPUT_TOOLTIPS = ("Full path to the output video file. Connect to Constrain Video or other nodes.",)
     OUTPUT_NODE = True
     CATEGORY = "utilities7/video"
     FUNCTION = "compose_video"
@@ -516,10 +518,10 @@ class ComposeVideo:
         audio_output = kwargs.pop('audio_output', 'with audio')
 
         if images is None:
-            return {"ui": {"gifs": []}, "result": ()}
-        
+            return {"ui": {"gifs": []}, "result": ("",)}
+
         if isinstance(images, torch.Tensor) and images.size(0) == 0:
-            return {"ui": {"gifs": []}, "result": ()}
+            return {"ui": {"gifs": []}, "result": ("",)}
         
         num_frames = len(images)
         pbar = ProgressBar(num_frames)
@@ -804,6 +806,7 @@ class ComposeVideo:
                 if os.path.exists(intermediate):
                     os.remove(intermediate)
         
+        output_path = output_files[-1]
         preview = {
             "filename": file,
             "subfolder": subfolder,
@@ -811,10 +814,10 @@ class ComposeVideo:
             "format": format,
             "frame_rate": frame_rate,
             "workflow": first_image_file,
-            "fullpath": output_files[-1],
+            "fullpath": output_path,
         }
-        
-        return {"ui": {"gifs": [preview]}, "result": ()}
+
+        return {"ui": {"gifs": [preview]}, "result": (output_path,)}
 
 
 # ============================================================================
