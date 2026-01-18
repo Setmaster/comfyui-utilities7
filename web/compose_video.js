@@ -60,8 +60,10 @@ function addFormatWidgets(nodeType, nodeData) {
 
         // Hide the format_widget_values widget (it's just for data transport)
         if (formatValuesWidget) {
-            formatValuesWidget.type = "hidden";
+            formatValuesWidget.type = "converted-widget";
+            formatValuesWidget.hidden = true;
             formatValuesWidget.computeSize = () => [0, -4];
+            formatValuesWidget.draw = () => {}; // Don't draw anything
         }
 
         let formatWidgetsCount = 0;
