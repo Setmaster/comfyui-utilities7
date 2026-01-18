@@ -50,7 +50,7 @@ Combines an image sequence into a video file with optional audio. Based on Comfy
 - `images`: Image sequence to combine into video
 - `frame_rate`: Frames per second (1-120, default 8)
 - `loop_count`: Number of additional loops (0 = play once)
-- `filename_prefix`: Output filename prefix (default: "video/", saves to video subfolder)
+- `filename_prefix`: Output filename prefix (default: "video/compose_video", saves to video subfolder)
 - `format`: Output format (image/gif, image/webp, video/h264-mp4, video/h265-mp4, video/webm, etc.)
 - `pingpong`: Play forward then reverse for seamless loop effect
 - `save_output`: Save to output folder (true) or temp folder (false)
